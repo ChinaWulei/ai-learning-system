@@ -102,7 +102,7 @@ public class LearningService {
                 "task_id", taskId,
                 "topic", task.get("topic"),
                 "quizzes", quizzes,
-                "answers", request.answers(),
+                "answers", toAiAnswers(request.answers()),
                 "user_profile", profiles.get(userId)
         ));
         Map<String, Object> data = map(aiResponse.get("data"));
@@ -126,6 +126,15 @@ public class LearningService {
                 .update();
         log(requestId, taskId, "EVALUATE", aiResponse, true);
         return data;
+    }
+
+    static List<Map<String, String>> toAiAnswers(List<AnswerItem> answers) {
+        return answers.stream()
+                .map(answer -> Map.of(
+                        "quiz_id", answer.quizId(),
+                        "answer", answer.answer()
+                ))
+                .toList();
     }
 
     public Map<String, Object> tutor(long userId, TutorRequest request) {
