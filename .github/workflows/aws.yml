@@ -17,7 +17,6 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ec2-user/MiniProgram_Volunteer
+            cd /home/ec2-user/ai-learning-system
             git pull
-            cd ./Backend/volunteer-backend
             sudo docker-compose up -d --build
