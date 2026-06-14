@@ -1,0 +1,54 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ai_learning
+      MYSQL_USER: learning
+      MYSQL_PASSWORD: learning123
+      MYSQL_ROOT_PASSWORD: root123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ai-service:
+    build: ./ai-service
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_MODEL: ${LLM_MODEL:-mock-learning-model}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      USE_BGE: ${USE_BGE:-false}
+      JAVA_BASE_URL: http://backend:8080
+      JAVA_INTERNAL_TOKEN: change-me
+    ports:
+      - "8000:8000"
+    volumes:
+      - rag-data:/app/data
+
+  backend:
+    build: ./backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/ai_learning?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      DB_USERNAME: learning
+      DB_PASSWORD: learning123
+      DB_DRIVER: com.mysql.cj.jdbc.Driver
+      AI_SERVICE_URL: http://ai-service:8000
+      JAVA_INTERNAL_TOKEN: change-me
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql-data:
+  rag-data:
+
