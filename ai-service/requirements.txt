@@ -1,7 +1,8 @@
 fastapi==0.115.12
 uvicorn[standard]==0.34.2
 langgraph==0.4.8
-langchain-core==0.3.63
+langgraph-checkpoint==3.0.1
+langchain-core==0.3.85
 httpx==0.28.1
 pydantic-settings==2.9.1
 python-multipart==0.0.20
