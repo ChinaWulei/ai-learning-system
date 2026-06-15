@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vladmandic/human": "^3.3.6",
     "vue": "3.5.16"
   },
   "devDependencies": {

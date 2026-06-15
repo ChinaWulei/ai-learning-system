@@ -1,6 +1,11 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { api, clearSession, getSession, saveSession } from "./api";
+import {
+  captureFaceEmbedding,
+  closeCamera,
+  openCamera,
+} from "./faceRecognition";
 
 const session = ref(getSession());
 const activeView = ref("learn");
@@ -20,6 +25,11 @@ const messages = ref([
   },
 ]);
 const loginForm = ref({ username: "demo", password: "demo123" });
+const loginMode = ref("password");
+const faceActive = ref(false);
+const faceStatus = ref("");
+const faceVideo = ref(null);
+let cameraStream = null;
 
 const navItems = [
   { id: "learn", label: "学习中心", icon: "◫" },
@@ -56,6 +66,61 @@ async function login() {
   } finally {
     busy.value = false;
   }
+}
+
+async function runFaceAction(action) {
+  error.value = "";
+  faceStatus.value = "";
+  if (!loginForm.value.username.trim()) {
+    error.value = "请先输入用户名";
+    return;
+  }
+  if (action === "enroll" && !loginForm.value.password) {
+    error.value = "录入人脸前请输入密码";
+    return;
+  }
+
+  busy.value = true;
+  faceActive.value = true;
+  try {
+    await nextTick();
+    cameraStream = await openCamera(faceVideo.value);
+    const embedding = await captureFaceEmbedding(
+      faceVideo.value,
+      (status) => { faceStatus.value = status; },
+    );
+    if (action === "enroll") {
+      await api.enrollFace(
+        loginForm.value.username.trim(),
+        loginForm.value.password,
+        embedding,
+      );
+      faceStatus.value = "人脸录入成功，现在可以刷脸登录";
+      loginMode.value = "face";
+    } else {
+      const data = await api.faceLogin(loginForm.value.username.trim(), embedding);
+      saveSession(data);
+      session.value = getSession();
+      await loadProfile();
+    }
+  } catch (err) {
+    error.value = err.name === "NotAllowedError"
+      ? "摄像头权限被拒绝，请在浏览器设置中允许访问"
+      : err.message;
+  } finally {
+    closeCamera(cameraStream);
+    cameraStream = null;
+    faceActive.value = false;
+    busy.value = false;
+  }
+}
+
+function cancelFaceCapture() {
+  closeCamera(cameraStream);
+  cameraStream = null;
+  faceActive.value = false;
+  busy.value = false;
+  faceStatus.value = "";
 }
 
 function logout() {
@@ -141,7 +206,10 @@ onMounted(() => {
   window.addEventListener("session-expired", handleSessionExpired);
   loadProfile();
 });
-onBeforeUnmount(() => window.removeEventListener("session-expired", handleSessionExpired));
+onBeforeUnmount(() => {
+  window.removeEventListener("session-expired", handleSessionExpired);
+  closeCamera(cameraStream);
+});
 </script>
 
 <template>
@@ -157,23 +225,57 @@ onBeforeUnmount(() => window.removeEventListener("session-expired", handleSessio
       <div class="brand-orbit orbit-two"></div>
     </section>
     <section class="login-panel">
-      <form class="login-card" @submit.prevent="login">
+      <form class="login-card" @submit.prevent="loginMode === 'password' ? login() : runFaceAction('login')">
         <div>
           <p class="eyebrow">WELCOME BACK</p>
           <h2>登录学习空间</h2>
-          <p class="muted">使用演示账户即可体验完整学习流程</p>
+          <p class="muted">密码登录后可录入人脸，下次直接刷脸进入</p>
+        </div>
+        <div class="login-tabs" role="tablist" aria-label="登录方式">
+          <button
+            type="button"
+            :class="{ active: loginMode === 'password' }"
+            @click="loginMode = 'password'; error = ''"
+          >密码登录</button>
+          <button
+            type="button"
+            :class="{ active: loginMode === 'face' }"
+            @click="loginMode = 'face'; error = ''"
+          >人脸登录</button>
         </div>
         <label>
           <span>用户名</span>
           <input v-model="loginForm.username" autocomplete="username" />
         </label>
-        <label>
+        <label v-if="loginMode === 'password'">
           <span>密码</span>
           <input v-model="loginForm.password" type="password" autocomplete="current-password" />
         </label>
+        <div v-if="faceActive" class="face-camera">
+          <video ref="faceVideo" playsinline muted></video>
+          <div class="face-guide" aria-hidden="true"></div>
+          <p>{{ faceStatus }}</p>
+        </div>
         <p v-if="error" class="error">{{ error }}</p>
-        <button class="primary-button" :disabled="busy">
-          {{ busy ? "正在登录..." : "进入学习空间" }}
+        <button v-if="!faceActive" class="primary-button" :disabled="busy">
+          {{ busy
+            ? "正在处理..."
+            : loginMode === "password" ? "进入学习空间" : "开始人脸验证" }}
+        </button>
+        <button
+          v-else
+          type="button"
+          class="secondary-button"
+          @click="cancelFaceCapture"
+        >取消验证</button>
+        <button
+          v-if="loginMode === 'password' && !faceActive"
+          type="button"
+          class="secondary-button"
+          :disabled="busy"
+          @click="runFaceAction('enroll')"
+        >
+          录入或更新人脸
         </button>
         <p class="demo-tip">演示账号：demo / demo123</p>
       </form>

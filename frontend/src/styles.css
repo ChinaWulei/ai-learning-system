@@ -74,6 +74,17 @@ h1, h2, h3 { font-family: var(--serif); }
 .login-card h2 { font-size: 32px; margin-bottom: 8px; }
 .login-card label, .create-card label { display: grid; gap: 8px; font-size: 13px; font-weight: 600; }
 .login-card .primary-button { margin-top: 8px; }
+.login-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: #efede5; }
+.login-tabs button { min-height: 36px; border: 0; border-radius: 6px; color: var(--muted); background: transparent; font-size: 13px; }
+.login-tabs button.active { color: var(--ink); background: #fffdf8; box-shadow: 0 1px 4px #423c3014; font-weight: 600; }
+.secondary-button { min-height: 44px; border: 1px solid var(--green); border-radius: 8px; color: var(--green); background: transparent; font-weight: 600; }
+.secondary-button:hover:not(:disabled) { background: var(--green-light); }
+.secondary-button:disabled { cursor: not-allowed; opacity: .55; }
+.face-camera { position: relative; overflow: hidden; aspect-ratio: 4 / 3; border-radius: 8px; background: #18211d; }
+.face-camera video { width: 100%; height: 100%; display: block; object-fit: cover; transform: scaleX(-1); }
+.face-camera::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, #101814cc, transparent 40%); pointer-events: none; }
+.face-guide { position: absolute; z-index: 1; width: 46%; aspect-ratio: 3 / 4; top: 44%; left: 50%; transform: translate(-50%, -50%); border: 2px solid #ffffffcc; border-radius: 50%; box-shadow: 0 0 0 999px #10181430; }
+.face-camera p { position: absolute; z-index: 2; right: 16px; bottom: 13px; left: 16px; margin: 0; color: white; font-size: 12px; text-align: center; }
 .demo-tip { text-align: center; color: var(--muted); font-size: 12px; }
 .error { margin: -8px 0; color: #ae3f2c; font-size: 13px; }
 

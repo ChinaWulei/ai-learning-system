@@ -57,6 +57,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ username, password }),
     }),
+  enrollFace: (username, password, embedding) =>
+    request("/api/auth/face/enroll", {
+      method: "POST",
+      body: JSON.stringify({ username, password, embedding }),
+    }),
+  faceLogin: (username, embedding) =>
+    request("/api/auth/face/login", {
+      method: "POST",
+      body: JSON.stringify({ username, embedding }),
+    }),
   profile: () => request("/api/users/me/profile"),
   createTask: (topic, goal) =>
     request("/api/learning/tasks", {
