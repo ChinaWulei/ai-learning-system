@@ -81,8 +81,13 @@ export async function captureFaceEmbedding(video, onStatus = () => {}) {
 
     const face = result.face[0];
     const faceSize = Math.min(face.box[2], face.box[3]);
-    if (face.faceScore < 0.65 || faceSize < 150) {
-      onStatus("请靠近摄像头并保持画面清晰");
+    const videoShortSide = Math.min(video.videoWidth || 640, video.videoHeight || 480);
+    const minimumFaceSize = Math.max(90, Math.min(130, videoShortSide * 0.22));
+    const detectionScore = Math.max(face.faceScore || 0, face.boxScore || 0);
+    if (detectionScore < 0.55) {
+      onStatus("画面清晰度不足，请保持稳定并改善光线");
+    } else if (faceSize < minimumFaceSize) {
+      onStatus("请让面部位于取景框中央");
     } else if ((face.real ?? 0) < 0.55 || (face.live ?? 0) < 0.55) {
       onStatus("活体检测中，请轻微转动头部");
     } else if (face.embedding?.length) {
