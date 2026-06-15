@@ -3,6 +3,7 @@ package com.softwarecup.learning.service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Map;
 
@@ -28,8 +29,18 @@ public class AiClient {
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> tutor(Map<String, Object> request) {
-        return client.post().uri("/ai/v1/tutor/chat")
-                .body(request).retrieve().body(Map.class);
+        try {
+            return client.post().uri("/ai/v1/tutor/chat")
+                    .body(request).retrieve().body(Map.class);
+        } catch (RestClientResponseException exception) {
+            throw new IllegalStateException(
+                    "AI 助教请求失败（HTTP %d）：%s".formatted(
+                            exception.getStatusCode().value(),
+                            exception.getResponseBodyAsString()
+                    ),
+                    exception
+            );
+        }
     }
 }
 

@@ -1,6 +1,7 @@
+import uuid
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class UserProfile(BaseModel):
@@ -36,11 +37,20 @@ class EvaluationRequest(BaseModel):
 
 
 class TutorRequest(BaseModel):
-    request_id: str
-    user_id: int
-    task_id: int | None = None
+    request_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
+        validation_alias=AliasChoices("request_id", "requestId"),
+    )
+    user_id: int = Field(validation_alias=AliasChoices("user_id", "userId"))
+    task_id: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("task_id", "taskId"),
+    )
     message: str
-    user_profile: UserProfile | None = None
+    user_profile: UserProfile | None = Field(
+        default=None,
+        validation_alias=AliasChoices("user_profile", "userProfile"),
+    )
 
 
 class KnowledgeSearchRequest(BaseModel):

@@ -1,9 +1,13 @@
+import logging
 import shutil
 import uuid
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Form, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
 from app.container import Container, get_container
 from app.schemas import (
@@ -15,6 +19,25 @@ from app.schemas import (
 )
 
 app = FastAPI(title="AI Learning Service", version="0.1.0")
+logger = logging.getLogger("uvicorn.error")
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request: Request, exception: RequestValidationError):
+    errors = exception.errors()
+    logger.warning(
+        "Request validation failed: path=%s errors=%s",
+        request.url.path,
+        errors,
+    )
+    return JSONResponse(
+        status_code=422,
+        content=jsonable_encoder({
+            "success": False,
+            "message": "请求参数校验失败",
+            "detail": errors,
+        }),
+    )
 
 
 @app.get("/health")
