@@ -4,7 +4,11 @@ import com.softwarecup.learning.common.ApiResponse;
 import com.softwarecup.learning.dto.LearningDtos.*;
 import com.softwarecup.learning.service.LearningService;
 import com.softwarecup.learning.service.ProfileService;
+import com.softwarecup.learning.service.AiClient;
 import jakarta.validation.Valid;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,10 +19,12 @@ import java.util.Map;
 public class LearningController {
     private final LearningService learning;
     private final ProfileService profiles;
+    private final AiClient ai;
 
-    public LearningController(LearningService learning, ProfileService profiles) {
+    public LearningController(LearningService learning, ProfileService profiles, AiClient ai) {
         this.learning = learning;
         this.profiles = profiles;
+        this.ai = ai;
     }
 
     @PostMapping("/learning/tasks")
@@ -57,6 +63,17 @@ public class LearningController {
             Authentication authentication, @Valid @RequestBody TutorRequest request
     ) {
         return ApiResponse.ok(learning.tutor(userId(authentication), request));
+    }
+
+    @PostMapping(value = "/tutor/speech", produces = "audio/wav")
+    public ResponseEntity<byte[]> speech(
+            Authentication authentication, @Valid @RequestBody SpeechRequest request
+    ) {
+        userId(authentication);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("audio/wav"))
+                .cacheControl(CacheControl.noStore())
+                .body(ai.synthesizeSpeech(request.text()));
     }
 
     @GetMapping("/users/me/profile")

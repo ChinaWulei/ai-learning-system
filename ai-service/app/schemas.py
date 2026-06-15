@@ -59,6 +59,10 @@ class KnowledgeSearchRequest(BaseModel):
     document_id: str | None = None
 
 
+class SpeechRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=6000)
+
+
 class ApiResponse(BaseModel):
     request_id: str
     success: bool = True

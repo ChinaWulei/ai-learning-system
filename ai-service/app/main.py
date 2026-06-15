@@ -4,10 +4,11 @@ import uuid
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
+import httpx
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.container import Container, get_container
 from app.schemas import (
@@ -15,6 +16,7 @@ from app.schemas import (
     EvaluationRequest,
     KnowledgeSearchRequest,
     PlanRequest,
+    SpeechRequest,
     TutorRequest,
 )
 
@@ -116,6 +118,31 @@ async def tutor(
         },
         trace=result["trace"],
     )
+
+
+@app.post("/ai/v1/tts")
+async def synthesize_speech(
+    request: SpeechRequest, container: Annotated[Container, Depends(get_container)]
+):
+    try:
+        audio = await container.tts.synthesize(request.text)
+        return Response(
+            content=audio,
+            media_type="audio/wav",
+            headers={"Cache-Control": "private, max-age=3600"},
+        )
+    except RuntimeError as exception:
+        raise HTTPException(status_code=503, detail=str(exception)) from exception
+    except httpx.HTTPStatusError as exception:
+        logger.error(
+            "Gemini TTS failed: status=%s body=%s",
+            exception.response.status_code,
+            exception.response.text,
+        )
+        raise HTTPException(status_code=502, detail="Gemini 语音生成失败") from exception
+    except httpx.HTTPError as exception:
+        logger.error("Gemini TTS request failed: %s", exception)
+        raise HTTPException(status_code=502, detail="Gemini 语音服务连接失败") from exception
 
 
 @app.post("/ai/v1/knowledge/search", response_model=ApiResponse)

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { api, clearSession, getSession, saveSession } from "./api";
+import DigitalTeacher from "./components/DigitalTeacher.vue";
 import {
   captureFaceEmbedding,
   closeCamera,
@@ -39,6 +40,9 @@ const navItems = [
 
 const stages = computed(() => task.value?.learning_plan?.stages || []);
 const masteryEntries = computed(() => Object.entries(profile.value?.mastery || {}));
+const latestTutorAnswer = computed(() => (
+  [...messages.value].reverse().find((message) => message.role === "assistant")?.content || ""
+));
 
 function textValue(value) {
   if (value === null || value === undefined) return "";
@@ -442,23 +446,28 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-else-if="activeView === 'tutor'" class="view tutor-view">
-        <section class="chat-panel">
-          <div class="chat-intro">
-            <div class="ai-orb">✦</div>
-            <h3>AI 学习助教</h3>
-            <p>基于你的学习画像和当前任务提供针对性解答</p>
-          </div>
-          <div class="messages">
-            <article v-for="(message, index) in messages" :key="index" :class="message.role">
-              <span>{{ message.role === "assistant" ? "AI" : "我" }}</span>
-              <p>{{ message.content }}</p>
-            </article>
-            <article v-if="busy" class="assistant typing"><span>AI</span><p>正在思考...</p></article>
-          </div>
-          <form class="chat-input" @submit.prevent="askTutor">
-            <input v-model="tutorMessage" placeholder="输入你的问题..." />
-            <button :disabled="busy || !tutorMessage.trim()">发送 ↑</button>
-          </form>
+        <section class="tutor-classroom">
+          <DigitalTeacher :text="latestTutorAnswer" :thinking="busy" />
+          <section class="chat-panel">
+            <div class="chat-intro">
+              <div>
+                <p class="eyebrow">PERSONAL CLASSROOM</p>
+                <h3>一对一讲解</h3>
+              </div>
+              <span>{{ task?.topic || "自由答疑" }}</span>
+            </div>
+            <div class="messages">
+              <article v-for="(message, index) in messages" :key="index" :class="message.role">
+                <span>{{ message.role === "assistant" ? "师" : "我" }}</span>
+                <p>{{ message.content }}</p>
+              </article>
+              <article v-if="busy" class="assistant typing"><span>师</span><p>正在整理讲解内容...</p></article>
+            </div>
+            <form class="chat-input" @submit.prevent="askTutor">
+              <input v-model="tutorMessage" placeholder="向林老师提问..." />
+              <button :disabled="busy || !tutorMessage.trim()">发送 ↑</button>
+            </form>
+          </section>
         </section>
       </div>
 

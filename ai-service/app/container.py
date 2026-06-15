@@ -6,6 +6,7 @@ from app.llm import create_llm_provider
 from app.memory import ProfileClient
 from app.rag import RagService
 from app.tools import ToolRegistry
+from app.tts import GeminiTtsService
 
 
 class Container:
@@ -15,6 +16,7 @@ class Container:
         self.rag = RagService(self.settings)
         self.profiles = ProfileClient(self.settings)
         self.tools = ToolRegistry(self.llm, self.rag, self.profiles)
+        self.tts = GeminiTtsService(self.settings)
         self.learning_graph = LearningGraph(self.tools, self.llm, self.profiles)
         self.tutor_graph = TutorGraph(self.tools, self.llm)
 

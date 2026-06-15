@@ -2,6 +2,7 @@ package com.softwarecup.learning.service;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
@@ -35,6 +36,25 @@ public class AiClient {
         } catch (RestClientResponseException exception) {
             throw new IllegalStateException(
                     "AI 助教请求失败（HTTP %d）：%s".formatted(
+                            exception.getStatusCode().value(),
+                            exception.getResponseBodyAsString()
+                    ),
+                    exception
+            );
+        }
+    }
+
+    public byte[] synthesizeSpeech(String text) {
+        try {
+            return client.post()
+                    .uri("/ai/v1/tts")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("text", text))
+                    .retrieve()
+                    .body(byte[].class);
+        } catch (RestClientResponseException exception) {
+            throw new IllegalStateException(
+                    "数字教师语音生成失败（HTTP %d）：%s".formatted(
                             exception.getStatusCode().value(),
                             exception.getResponseBodyAsString()
                     ),

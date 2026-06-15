@@ -55,6 +55,34 @@ async function request(path, options = {}) {
   return payload.data;
 }
 
+async function requestAudio(path, body) {
+  const token = localStorage.getItem(TOKEN_KEY);
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (response.status === 401 || response.status === 403) {
+    clearSession();
+    window.dispatchEvent(new Event("session-expired"));
+    throw new Error("登录状态已失效，请重新登录");
+  }
+  if (!response.ok) {
+    let message = `语音生成失败（HTTP ${response.status}）`;
+    try {
+      const payload = await response.json();
+      message = payload.message || payload.detail || message;
+    } catch {
+      // Keep the HTTP status message for non-JSON responses.
+    }
+    throw new Error(message);
+  }
+  return response.blob();
+}
+
 export const api = {
   login: (username, password) =>
     request("/api/auth/login", {
@@ -87,4 +115,5 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ message, taskId: taskId || null }),
     }),
+  speech: (text) => requestAudio("/api/tutor/speech", { text }),
 };
