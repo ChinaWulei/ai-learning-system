@@ -33,6 +33,7 @@ public class AiClient {
         this.client = builder.baseUrl(this.serviceUrl).build();
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
     }
@@ -70,6 +71,7 @@ public class AiClient {
             String requestBody = objectMapper.writeValueAsString(Map.of("text", text));
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(serviceUrl + "/ai/v1/tts"))
+                    .version(HttpClient.Version.HTTP_1_1)
                     .timeout(Duration.ofSeconds(150))
                     .header("Content-Type", "application/json; charset=utf-8")
                     .header("Accept", "audio/wav")
