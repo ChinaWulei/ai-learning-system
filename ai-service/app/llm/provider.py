@@ -55,6 +55,55 @@ class OpenAICompatibleProvider(LLMProvider):
         return await self._complete(system_prompt, user_prompt, False)
 
 
+class GeminiProvider(LLMProvider):
+    def __init__(self, api_key: str, base_url: str, model: str):
+        self.api_key = api_key
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+
+    async def _complete(self, system_prompt: str, user_prompt: str, json_mode: bool) -> str:
+        generation_config: dict[str, Any] = {"temperature": 0.3}
+        if json_mode:
+            generation_config["responseMimeType"] = "application/json"
+
+        payload: dict[str, Any] = {
+            "systemInstruction": {
+                "parts": [{"text": system_prompt}],
+            },
+            "contents": [{
+                "role": "user",
+                "parts": [{"text": user_prompt}],
+            }],
+            "generationConfig": generation_config,
+        }
+        async with httpx.AsyncClient(timeout=90) as client:
+            response = await client.post(
+                f"{self.base_url}/models/{self.model}:generateContent",
+                headers={
+                    "x-goog-api-key": self.api_key,
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+            response.raise_for_status()
+            data = response.json()
+        parts = data["candidates"][0]["content"]["parts"]
+        return "".join(part.get("text", "") for part in parts).strip()
+
+    async def generate_json(
+        self, system_prompt: str, user_prompt: str, schema_hint: dict[str, Any]
+    ) -> dict[str, Any]:
+        prompt = (
+            f"{user_prompt}\n"
+            "Output JSON only. Do not wrap it in Markdown. "
+            f"Use this structure as a reference: {json.dumps(schema_hint, ensure_ascii=False)}"
+        )
+        return json.loads(await self._complete(system_prompt, prompt, True))
+
+    async def chat(self, system_prompt: str, user_prompt: str) -> str:
+        return await self._complete(system_prompt, user_prompt, False)
+
+
 class MockLLMProvider(LLMProvider):
     async def generate_json(
         self, system_prompt: str, user_prompt: str, schema_hint: dict[str, Any]
@@ -66,16 +115,34 @@ class MockLLMProvider(LLMProvider):
 
 
 def create_llm_provider(settings: Settings) -> LLMProvider:
-    if settings.llm_provider == "mock" or not settings.llm_api_key:
+    provider = settings.llm_provider.lower()
+    if provider == "mock":
         return MockLLMProvider()
+
+    if provider == "gemini":
+        api_key = settings.llm_api_key or settings.gemini_api_key
+        if not api_key:
+            return MockLLMProvider()
+        model = settings.llm_model
+        if model == "mock-learning-model":
+            model = "gemini-2.5-flash"
+        return GeminiProvider(
+            api_key=api_key,
+            base_url=settings.llm_base_url or "https://generativelanguage.googleapis.com/v1beta",
+            model=model,
+        )
+
+    if not settings.llm_api_key:
+        return MockLLMProvider()
+
     defaults = {
         "openai": "https://api.openai.com/v1",
         "deepseek": "https://api.deepseek.com/v1",
         "qwen": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     }
-    base_url = settings.llm_base_url or defaults.get(settings.llm_provider)
+    base_url = settings.llm_base_url or defaults.get(provider)
     if not base_url:
-        raise ValueError(f"Unsupported LLM provider: {settings.llm_provider}")
+        raise ValueError(f"Unsupported LLM provider: {provider}")
     return OpenAICompatibleProvider(
         api_key=settings.llm_api_key,
         base_url=base_url,
