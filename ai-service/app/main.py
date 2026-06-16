@@ -1,4 +1,5 @@
 import logging
+import json
 import shutil
 import uuid
 from pathlib import Path
@@ -16,7 +17,6 @@ from app.schemas import (
     EvaluationRequest,
     KnowledgeSearchRequest,
     PlanRequest,
-    SpeechRequest,
     TutorRequest,
 )
 
@@ -125,10 +125,43 @@ async def tutor(
 
 @app.post("/ai/v1/tts")
 async def synthesize_speech(
-    request: SpeechRequest, container: Annotated[Container, Depends(get_container)]
+    request: Request, container: Annotated[Container, Depends(get_container)]
 ):
+    body = await request.body()
+    content_type = request.headers.get("content-type")
+    if not body:
+        logger.warning(
+            "TTS request body is empty: client=%s content_type=%s",
+            request.client.host if request.client else "unknown",
+            content_type,
+        )
+        raise HTTPException(status_code=422, detail="语音文本不能为空")
     try:
-        audio = await container.tts.synthesize(request.text)
+        payload = json.loads(body.decode("utf-8"))
+        if isinstance(payload, str):
+            payload = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exception:
+        logger.warning(
+            "TTS request body is not valid JSON: client=%s content_type=%s length=%s preview=%r",
+            request.client.host if request.client else "unknown",
+            content_type,
+            len(body),
+            body[:120],
+        )
+        raise HTTPException(status_code=422, detail="语音请求必须是 JSON") from exception
+
+    text = payload.get("text") if isinstance(payload, dict) else None
+    if not isinstance(text, str) or not text.strip():
+        logger.warning(
+            "TTS request missing text: client=%s content_type=%s payload_type=%s",
+            request.client.host if request.client else "unknown",
+            content_type,
+            type(payload).__name__,
+        )
+        raise HTTPException(status_code=422, detail="语音文本不能为空")
+    text = text.strip()[:6000]
+    try:
+        audio = await container.tts.synthesize(text)
         return Response(
             content=audio,
             media_type="audio/wav",
