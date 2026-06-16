@@ -102,6 +102,8 @@ export const api = {
   profile: () => request("/api/users/me/profile"),
   progress: () => request("/api/users/me/progress"),
   knowledgeGraph: () => request("/api/knowledge/graph"),
+  tasks: () => request("/api/learning/tasks"),
+  task: (taskId) => request(`/api/learning/tasks/${taskId}`),
   createTask: (topic, goal) =>
     request("/api/learning/tasks", {
       method: "POST",

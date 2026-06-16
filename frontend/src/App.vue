@@ -13,6 +13,7 @@ const activeView = ref("learn");
 const busy = ref(false);
 const error = ref("");
 const task = ref(null);
+const tasks = ref([]);
 const profile = ref(null);
 const progressSummary = ref(null);
 const knowledgeGraph = ref(null);
@@ -104,6 +105,11 @@ function statusLabel(status) {
   }[status] || status || "未知";
 }
 
+function dateText(value) {
+  if (!value) return "";
+  return String(value).replace("T", " ").slice(0, 16);
+}
+
 async function login() {
   error.value = "";
   busy.value = true;
@@ -178,6 +184,7 @@ function logout() {
   clearSession();
   session.value = getSession();
   task.value = null;
+  tasks.value = [];
   profile.value = null;
   progressSummary.value = null;
   knowledgeGraph.value = null;
@@ -189,8 +196,24 @@ async function loadProfile() {
     profile.value = await api.profile();
     progressSummary.value = await api.progress();
     knowledgeGraph.value = await api.knowledgeGraph();
+    tasks.value = await api.tasks();
   } catch (err) {
     error.value = err.message;
+  }
+}
+
+async function loadTask(taskId) {
+  if (!taskId || busy.value) return;
+  error.value = "";
+  busy.value = true;
+  try {
+    task.value = await api.task(taskId);
+    evaluation.value = null;
+    answers.value = {};
+  } catch (err) {
+    error.value = err.message;
+  } finally {
+    busy.value = false;
   }
 }
 
@@ -202,6 +225,7 @@ async function createTask() {
   try {
     task.value = await api.createTask(topic.value.trim(), goal.value.trim());
     answers.value = {};
+    tasks.value = await api.tasks();
     knowledgeGraph.value = await api.knowledgeGraph();
   } catch (err) {
     error.value = err.message;
@@ -370,13 +394,34 @@ onBeforeUnmount(() => {
       <p v-if="error" class="global-error" @click="error = ''">{{ error }} <span>×</span></p>
 
       <div v-if="activeView === 'learn'" class="view">
-        <section v-if="!task" class="hero-grid">
-          <div class="hero-copy">
-            <p class="eyebrow">START A NEW JOURNEY</p>
-            <h1>今天，想掌握<br /><em>什么新知识？</em></h1>
-            <p>告诉 AI 你的学习主题和目标，我们将为你生成专属路径、内容与练习。</p>
+        <section v-if="!task" class="task-home">
+          <div class="task-library panel">
+            <div class="section-title">
+              <div><p class="eyebrow">MY TASKS</p><h3>历史学习主题</h3></div>
+              <span>{{ tasks.length }} 个</span>
+            </div>
+            <article
+              v-for="item in tasks"
+              :key="item.id"
+              class="task-list-item"
+              @click="loadTask(item.id)"
+            >
+              <div>
+                <h4>{{ item.topic }}</h4>
+                <p>{{ item.goal || "掌握核心知识并完成基础应用" }}</p>
+              </div>
+              <div class="task-list-meta">
+                <span>{{ statusLabel(item.status) }}</span>
+                <small>{{ item.estimated_hours || 0 }}h · {{ dateText(item.updated_at) }}</small>
+              </div>
+            </article>
+            <p v-if="!tasks.length" class="empty">还没有历史任务，先创建一个学习主题。</p>
           </div>
           <form class="create-card" @submit.prevent="createTask">
+            <div>
+              <p class="eyebrow">START A NEW JOURNEY</p>
+              <h3>新建学习主题</h3>
+            </div>
             <label>
               <span>学习主题</span>
               <input v-model="topic" placeholder="例如：Java 并发编程" />

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>双人足球对战</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">FOOTBALL DUEL</p>
+          <h1>双人足球对战</h1>
+          <p>一个球场，两名球员。蓝队从左侧进攻，红队从右侧进攻。</p>
+        </div>
+        <div class="scoreboard" aria-label="比分">
+          <strong id="blueScore">0</strong>
+          <span>:</span>
+          <strong id="redScore">0</strong>
+        </div>
+      </section>
+
+      <section class="layout">
+        <section class="stadium">
+          <div class="statusbar">
+            <span id="status">练习模式</span>
+            <span id="notice">WASD 或方向键移动，空格射门。</span>
+          </div>
+          <canvas id="field" width="960" height="560" aria-label="足球场"></canvas>
+        </section>
+
+        <aside class="panel">
+          <section class="box">
+            <h2>开赛</h2>
+            <div class="button-grid">
+              <button id="soloBtn" class="active" type="button">练习</button>
+              <button id="localHostBtn" type="button">双标签主机</button>
+              <button id="webHostBtn" type="button">联机主机</button>
+            </div>
+          </section>
+
+          <section class="box">
+            <h2>加入</h2>
+            <textarea id="remoteCode" rows="5" placeholder="输入本机房间码、主机码或客队码"></textarea>
+            <div class="button-grid vertical">
+              <button id="joinLocalBtn" type="button">加入双标签</button>
+              <button id="joinWebBtn" type="button">作为客队加入</button>
+              <button id="acceptAnswerBtn" type="button">主机确认客队码</button>
+            </div>
+          </section>
+
+          <section class="box">
+            <h2>我的代码</h2>
+            <textarea id="roomCode" rows="5" readonly placeholder="创建或加入后显示"></textarea>
+            <button id="copyBtn" class="wide" type="button">复制代码</button>
+          </section>
+
+          <section class="help">
+            <span>移动</span><strong>WASD / 方向键</strong>
+            <span>射门</span><strong>空格</strong>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

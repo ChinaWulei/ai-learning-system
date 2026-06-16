@@ -91,6 +91,30 @@ public class LearningService {
         return result;
     }
 
+    public List<Map<String, Object>> listTasks(long userId) {
+        return jdbc.sql("""
+                SELECT id, topic, goal, status, current_stage, plan_json, created_at, updated_at
+                FROM learning_task
+                WHERE user_id = :userId
+                ORDER BY updated_at DESC, id DESC
+                """)
+                .param("userId", userId)
+                .query((rs, rowNum) -> {
+                    Map<String, Object> plan = map(read(rs.getString("plan_json")));
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("id", rs.getLong("id"));
+                    row.put("topic", rs.getString("topic"));
+                    row.put("goal", rs.getString("goal"));
+                    row.put("status", rs.getString("status"));
+                    row.put("current_stage", rs.getString("current_stage"));
+                    row.put("estimated_hours", plan.getOrDefault("estimated_hours", 0));
+                    row.put("created_at", rs.getTimestamp("created_at"));
+                    row.put("updated_at", rs.getTimestamp("updated_at"));
+                    return row;
+                })
+                .list();
+    }
+
     public void recordProgress(long userId, long taskId, ProgressRequest request) {
         assertOwner(userId, taskId);
         jdbc.sql("""

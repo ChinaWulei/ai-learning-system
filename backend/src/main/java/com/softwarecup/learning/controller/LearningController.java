@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -40,6 +41,11 @@ public class LearningController {
             Authentication authentication, @Valid @RequestBody CreateTaskRequest request
     ) {
         return ApiResponse.ok(learning.createTask(userId(authentication), request));
+    }
+
+    @GetMapping("/learning/tasks")
+    public ApiResponse<List<Map<String, Object>>> list(Authentication authentication) {
+        return ApiResponse.ok(learning.listTasks(userId(authentication)));
     }
 
     @GetMapping("/learning/tasks/{taskId}")
