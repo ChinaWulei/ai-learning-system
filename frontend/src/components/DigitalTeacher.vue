@@ -12,6 +12,7 @@ const speaking = ref(false);
 const paused = ref(false);
 const loadingVoice = ref(false);
 const rate = ref(1);
+const language = ref("zh-CN");
 const subtitle = ref("你好，我是林老师。今天想学习什么？");
 const segmentIndex = ref(0);
 const segments = ref([]);
@@ -22,6 +23,17 @@ let currentSession = 0;
 let selectedVoice = null;
 let audio = null;
 let audioUrl = "";
+
+const languageOptions = [
+  { value: "zh-CN", label: "普通话", speechLang: "zh-CN" },
+  { value: "yue-HK", label: "粤语", speechLang: "zh-HK" },
+  { value: "en-US", label: "English", speechLang: "en-US" },
+  { value: "ja-JP", label: "日本語", speechLang: "ja-JP" },
+];
+
+const currentLanguage = computed(() => (
+  languageOptions.find((item) => item.value === language.value) || languageOptions[0]
+));
 
 const statusText = computed(() => {
   if (props.thinking) return "正在备课";
@@ -39,9 +51,11 @@ const progress = computed(() => {
 
 function selectVoice() {
   const voices = window.speechSynthesis?.getVoices() || [];
-  selectedVoice = voices.find((voice) => /zh-CN/i.test(voice.lang) && /Xiaoxiao|晓晓|女|Female/i.test(voice.name))
-    || voices.find((voice) => /zh-CN/i.test(voice.lang))
-    || voices.find((voice) => /^zh/i.test(voice.lang))
+  const desiredLang = currentLanguage.value.speechLang;
+  const langPrefix = desiredLang.split("-")[0];
+  selectedVoice = voices.find((voice) => voice.lang === desiredLang && /Xiaoxiao|晓晓|Female|女|Kyoko|Samantha/i.test(voice.name))
+    || voices.find((voice) => voice.lang === desiredLang)
+    || voices.find((voice) => voice.lang?.startsWith(langPrefix))
     || null;
 }
 
@@ -83,7 +97,7 @@ function speakBrowserSegment(session) {
   const text = segments.value[segmentIndex.value];
   subtitle.value = text;
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "zh-CN";
+  utterance.lang = currentLanguage.value.speechLang;
   utterance.rate = rate.value;
   utterance.pitch = 1.04;
   if (selectedVoice) utterance.voice = selectedVoice;
@@ -153,7 +167,7 @@ async function speak(text = props.text) {
   speechSource.value = "Gemini";
   const session = currentSession;
   try {
-    const blob = await api.speech(text.slice(0, 6000));
+    const blob = await api.speech(text.slice(0, 6000), language.value);
     if (session !== currentSession) return;
     configureAudio(blob, session);
     loadingVoice.value = false;
@@ -213,6 +227,10 @@ function changeRate() {
   }
 }
 
+function changeLanguage() {
+  if (props.text) speak();
+}
+
 watch(() => props.text, (text, previous) => {
   if (text && text !== previous) speak(text);
 });
@@ -230,7 +248,7 @@ onBeforeUnmount(() => {
         <h3>林老师</h3>
       </div>
       <div class="teacher-meta">
-        <small>{{ speechSource }}</small>
+        <small>{{ speechSource }} · {{ currentLanguage.label }}</small>
         <span class="teacher-status"><i></i>{{ statusText }}</span>
       </div>
     </header>
@@ -263,6 +281,16 @@ onBeforeUnmount(() => {
         :disabled="loadingVoice || !props.text"
         @click="replay"
       >↻</button>
+      <label>
+        <span>语种</span>
+        <select v-model="language" @change="changeLanguage">
+          <option
+            v-for="item in languageOptions"
+            :key="item.value"
+            :value="item.value"
+          >{{ item.label }}</option>
+        </select>
+      </label>
       <label>
         <span>语速</span>
         <select v-model.number="rate" @change="changeRate">
@@ -339,7 +367,8 @@ onBeforeUnmount(() => {
   background: #ffffff0d;
 }
 .teacher-controls button:disabled { cursor: not-allowed; opacity: .35; }
-.teacher-controls label { display: flex; align-items: center; gap: 7px; margin-left: auto; color: #a9bdb3; font-size: 11px; }
+.teacher-controls label { display: flex; align-items: center; gap: 7px; color: #a9bdb3; font-size: 11px; }
+.teacher-controls label:first-of-type { margin-left: auto; }
 .teacher-controls select { width: auto; border: 1px solid #ffffff24; border-radius: 5px; padding: 5px 22px 5px 7px; color: white; background: #173e32; font-size: 11px; }
 .speech-warning { margin: 0; padding: 0 16px 12px; color: #f1c2b5; background: #102f27; font-size: 11px; }
 @keyframes teacher-talk {

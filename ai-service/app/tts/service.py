@@ -13,15 +13,16 @@ class GeminiTtsService:
         self.model = settings.gemini_tts_model
         self.voice = settings.gemini_tts_voice
 
-    async def synthesize(self, text: str) -> bytes:
+    async def synthesize(self, text: str, language: str = "zh-CN") -> bytes:
         if not self.api_key:
             raise RuntimeError("Gemini TTS 未配置，请设置 GEMINI_API_KEY")
 
+        instruction = self._language_instruction(language)
         payload = {
             "contents": [{
                 "parts": [{
                     "text": (
-                        "请使用自然、温暖、耐心的普通话教师语气朗读以下内容。"
+                        f"{instruction}"
                         "保持原意，不添加或省略内容，知识点处适当停顿：\n"
                         f"{text}"
                     )
@@ -57,6 +58,16 @@ class GeminiTtsService:
         except (KeyError, IndexError, TypeError, ValueError) as exception:
             raise RuntimeError("Gemini 未返回有效音频") from exception
         return self._pcm_to_wav(pcm)
+
+    @staticmethod
+    def _language_instruction(language: str) -> str:
+        instructions = {
+            "zh-CN": "请使用自然、温暖、耐心的普通话教师语气朗读以下内容。",
+            "en-US": "Read the following content in clear, warm, patient American English teacher style. ",
+            "ja-JP": "以下の内容を、自然で温かく、わかりやすい日本語の先生の口調で読み上げてください。",
+            "yue-HK": "請用自然、親切、有耐性嘅粵語老師語氣朗讀以下內容。",
+        }
+        return instructions.get(language, instructions["zh-CN"])
 
     @staticmethod
     def _pcm_to_wav(pcm: bytes) -> bytes:

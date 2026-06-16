@@ -151,6 +151,9 @@ async def synthesize_speech(
         raise HTTPException(status_code=422, detail="语音请求必须是 JSON") from exception
 
     text = payload.get("text") if isinstance(payload, dict) else None
+    language = payload.get("language", "zh-CN") if isinstance(payload, dict) else "zh-CN"
+    if language not in {"zh-CN", "en-US", "ja-JP", "yue-HK"}:
+        language = "zh-CN"
     if not isinstance(text, str) or not text.strip():
         logger.warning(
             "TTS request missing text: client=%s content_type=%s payload_type=%s",
@@ -161,7 +164,7 @@ async def synthesize_speech(
         raise HTTPException(status_code=422, detail="语音文本不能为空")
     text = text.strip()[:6000]
     try:
-        audio = await container.tts.synthesize(text)
+        audio = await container.tts.synthesize(text, language)
         return Response(
             content=audio,
             media_type="audio/wav",

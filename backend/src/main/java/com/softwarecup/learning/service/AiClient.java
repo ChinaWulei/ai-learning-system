@@ -66,9 +66,13 @@ public class AiClient {
         }
     }
 
-    public byte[] synthesizeSpeech(String text) {
+    public byte[] synthesizeSpeech(String text, String language) {
         try {
-            String requestBody = objectMapper.writeValueAsString(Map.of("text", text));
+            String normalizedLanguage = (language == null || language.isBlank()) ? "zh-CN" : language;
+            String requestBody = objectMapper.writeValueAsString(Map.of(
+                    "text", text,
+                    "language", normalizedLanguage
+            ));
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(serviceUrl + "/ai/v1/tts"))
                     .version(HttpClient.Version.HTTP_1_1)

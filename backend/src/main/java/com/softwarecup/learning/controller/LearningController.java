@@ -73,7 +73,7 @@ public class LearningController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("audio/wav"))
                 .cacheControl(CacheControl.noStore())
-                .body(ai.synthesizeSpeech(request.text()));
+                .body(ai.synthesizeSpeech(request.text(), request.language()));
     }
 
     @GetMapping("/users/me/profile")

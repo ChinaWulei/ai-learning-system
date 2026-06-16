@@ -115,5 +115,5 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ message, taskId: taskId || null }),
     }),
-  speech: (text) => requestAudio("/api/tutor/speech", { text }),
+  speech: (text, language) => requestAudio("/api/tutor/speech", { text, language }),
 };

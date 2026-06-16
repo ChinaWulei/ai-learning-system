@@ -23,6 +23,6 @@ public final class LearningDtos {
     public record AnswerItem(@NotBlank String quizId, @NotBlank String answer) {}
     public record SubmitAnswersRequest(@NotEmpty List<AnswerItem> answers) {}
     public record TutorRequest(@NotBlank String message, Long taskId) {}
-    public record SpeechRequest(@NotBlank @Size(max = 6000) String text) {}
+    public record SpeechRequest(@NotBlank @Size(max = 6000) String text, String language) {}
 }
 

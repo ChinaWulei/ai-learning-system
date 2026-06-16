@@ -38,10 +38,12 @@ class AiClientTest {
                     "http://127.0.0.1:" + server.getAddress().getPort()
             );
 
-            assertThat(client.synthesizeSpeech("讲解线程安全")).containsExactly(1, 2, 3);
+            assertThat(client.synthesizeSpeech("讲解线程安全", "ja-JP")).containsExactly(1, 2, 3);
             assertThat(contentType.get()).isEqualTo("application/json; charset=utf-8");
             assertThat(accept.get()).isEqualTo("audio/wav");
-            assertThat(body.get()).isEqualTo("{\"text\":\"讲解线程安全\"}");
+            var requestBody = new ObjectMapper().readTree(body.get());
+            assertThat(requestBody.get("text").asText()).isEqualTo("讲解线程安全");
+            assertThat(requestBody.get("language").asText()).isEqualTo("ja-JP");
         } finally {
             server.stop(0);
         }
@@ -64,7 +66,7 @@ class AiClientTest {
                     "http://127.0.0.1:" + server.getAddress().getPort()
             );
 
-            assertThatThrownBy(() -> client.synthesizeSpeech("讲解线程安全"))
+            assertThatThrownBy(() -> client.synthesizeSpeech("讲解线程安全", "zh-CN"))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("AI 服务协议错误")
                     .hasMessageContaining("http://ai-service:8000");
