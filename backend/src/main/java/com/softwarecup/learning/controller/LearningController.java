@@ -5,6 +5,7 @@ import com.softwarecup.learning.dto.LearningDtos.*;
 import com.softwarecup.learning.service.LearningService;
 import com.softwarecup.learning.service.ProfileService;
 import com.softwarecup.learning.service.AiClient;
+import com.softwarecup.learning.service.KnowledgeGraphService;
 import jakarta.validation.Valid;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
@@ -20,11 +21,18 @@ public class LearningController {
     private final LearningService learning;
     private final ProfileService profiles;
     private final AiClient ai;
+    private final KnowledgeGraphService knowledgeGraph;
 
-    public LearningController(LearningService learning, ProfileService profiles, AiClient ai) {
+    public LearningController(
+            LearningService learning,
+            ProfileService profiles,
+            AiClient ai,
+            KnowledgeGraphService knowledgeGraph
+    ) {
         this.learning = learning;
         this.profiles = profiles;
         this.ai = ai;
+        this.knowledgeGraph = knowledgeGraph;
     }
 
     @PostMapping("/learning/tasks")
@@ -79,6 +87,16 @@ public class LearningController {
     @GetMapping("/users/me/profile")
     public ApiResponse<Map<String, Object>> profile(Authentication authentication) {
         return ApiResponse.ok(profiles.get(userId(authentication)));
+    }
+
+    @GetMapping("/users/me/progress")
+    public ApiResponse<Map<String, Object>> progress(Authentication authentication) {
+        return ApiResponse.ok(profiles.progress(userId(authentication)));
+    }
+
+    @GetMapping("/knowledge/graph")
+    public ApiResponse<Map<String, Object>> knowledgeGraph(Authentication authentication) {
+        return ApiResponse.ok(knowledgeGraph.graph(userId(authentication)));
     }
 
     private long userId(Authentication authentication) {

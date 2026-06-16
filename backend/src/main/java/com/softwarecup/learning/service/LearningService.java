@@ -17,12 +17,20 @@ public class LearningService {
     private final ObjectMapper json;
     private final AiClient ai;
     private final ProfileService profiles;
+    private final KnowledgeGraphService knowledgeGraph;
 
-    public LearningService(JdbcClient jdbc, ObjectMapper json, AiClient ai, ProfileService profiles) {
+    public LearningService(
+            JdbcClient jdbc,
+            ObjectMapper json,
+            AiClient ai,
+            ProfileService profiles,
+            KnowledgeGraphService knowledgeGraph
+    ) {
         this.jdbc = jdbc;
         this.json = json;
         this.ai = ai;
         this.profiles = profiles;
+        this.knowledgeGraph = knowledgeGraph;
     }
 
     @Transactional
@@ -56,7 +64,16 @@ public class LearningService {
                 .param("content", write(data.get("content")))
                 .param("taskId", taskId)
                 .update();
-        saveQuizzes(taskId, list(data.get("quizzes")));
+        List<Map<String, Object>> quizzes = list(data.get("quizzes"));
+        List<Map<String, Object>> planStages = list(map(data.get("learning_plan")).get("stages"));
+        saveQuizzes(taskId, quizzes);
+        knowledgeGraph.syncTask(
+                userId,
+                taskId,
+                request.topic(),
+                planStages,
+                quizzes
+        );
         log(requestId, taskId, "GENERATE_PLAN", aiResponse, true);
         return getTask(userId, taskId);
     }

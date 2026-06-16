@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { api, clearSession, getSession, saveSession } from "./api";
 import DigitalTeacher from "./components/DigitalTeacher.vue";

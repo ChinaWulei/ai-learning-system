@@ -17,3 +17,9 @@ ai:
   service-url: ${AI_SERVICE_URL:http://localhost:8000}
   internal-token: ${JAVA_INTERNAL_TOKEN:change-me}
 
+knowledge-graph:
+  enabled: ${NEO4J_ENABLED:false}
+  uri: ${NEO4J_URI:bolt://localhost:7687}
+  username: ${NEO4J_USERNAME:neo4j}
+  password: ${NEO4J_PASSWORD:learning123}
+

@@ -100,6 +100,8 @@ export const api = {
       body: JSON.stringify({ username, embedding }),
     }),
   profile: () => request("/api/users/me/profile"),
+  progress: () => request("/api/users/me/progress"),
+  knowledgeGraph: () => request("/api/knowledge/graph"),
   createTask: (topic, goal) =>
     request("/api/learning/tasks", {
       method: "POST",

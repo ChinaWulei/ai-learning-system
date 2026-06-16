@@ -190,10 +190,41 @@ h1, h2, h3 { font-family: var(--serif); }
 .chat-input button { border: 0; border-radius: 8px; padding: 0 20px; color: white; background: var(--green); }
 .chat-input button:disabled { opacity: .5; }
 
+.graph-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 28px; }
+.graph-heading h1 { margin-bottom: 8px; font-size: 40px; }
+.graph-heading p:last-child { margin: 0; color: var(--muted); }
+.graph-stats { display: grid; grid-template-columns: repeat(2, 110px); gap: 12px; }
+.graph-stats article { min-height: 86px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 10px; background: #fffdf8; }
+.graph-stats strong { color: var(--green); font-family: var(--serif); font-size: 29px; line-height: 1; }
+.graph-stats span { color: var(--muted); font-size: 12px; }
+.graph-panel { overflow: hidden; }
+.graph-warning { margin-bottom: 16px; padding: 11px 13px; border: 1px solid #e7c5b5; border-radius: 8px; color: #9b4a2a; background: #fff1ea; font-size: 13px; }
+.graph-canvas { overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: radial-gradient(circle at center, #ffffff 0, #faf8f2 62%); }
+.graph-canvas svg { width: 100%; min-width: 720px; height: 520px; display: block; }
+.graph-canvas line { stroke: #c8c1b4; stroke-width: 1.4; }
+.graph-node circle { stroke: #fffdf8; stroke-width: 3; filter: drop-shadow(0 8px 10px #423c3020); }
+.graph-node.task circle { fill: var(--green); }
+.graph-node.knowledge circle { fill: #d76c3a; }
+.graph-node.quiz circle { fill: #d6b477; }
+.graph-node text { max-width: 120px; fill: #3d403a; font-size: 11px; text-anchor: middle; paint-order: stroke; stroke: #fffdf8; stroke-width: 4px; stroke-linejoin: round; }
+
 .profile-hero { display: flex; align-items: center; gap: 24px; margin-bottom: 36px; }
 .profile-avatar { width: 88px; height: 88px; display: grid; place-items: center; border-radius: 50%; color: white; background: var(--green); font-family: var(--serif); font-size: 34px; }
 .profile-hero h1 { margin-bottom: 6px; font-size: 35px; }
 .profile-hero p:last-child { color: var(--muted); }
+.progress-overview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.progress-overview article { min-height: 118px; display: grid; align-content: space-between; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: #fffdf8; box-shadow: 0 10px 30px #423c300c; }
+.progress-overview span { color: var(--muted); font-size: 12px; }
+.progress-overview strong { color: var(--green); font-family: var(--serif); font-size: 34px; line-height: 1; }
+.progress-overview small { color: var(--muted); font-size: 11px; }
+.progress-dashboard { display: grid; grid-template-columns: 1.2fr .8fr; gap: 24px; }
+.score-chart { height: 220px; display: grid; grid-template-columns: repeat(8, 1fr); align-items: end; gap: 11px; padding-top: 10px; }
+.score-chart article { height: 100%; min-width: 0; display: grid; grid-template-rows: 1fr auto; justify-items: center; gap: 8px; }
+.score-bar { width: 100%; max-width: 34px; align-self: end; border-radius: 6px 6px 2px 2px; background: linear-gradient(180deg, #d76c3a, #245b47); }
+.score-chart span { color: var(--muted); font-size: 11px; }
+.status-list { display: grid; gap: 18px; }
+.status-list article > div:first-child { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+.status-list span { color: var(--green); font-weight: 600; }
 .profile-grid { display: grid; grid-template-columns: 1.4fr .8fr; gap: 24px; }
 .mastery-panel { grid-row: span 2; }
 .mastery-row { margin: 22px 0; }
@@ -204,6 +235,9 @@ h1, h2, h3 { font-family: var(--serif); }
 .tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .tags span { padding: 7px 10px; border-radius: 5px; color: #9b4a2a; background: #f4e3d9; font-size: 12px; }
 .tags.preference span { color: var(--green); background: var(--green-light); }
+.recommendation-panel article { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); }
+.recommendation-panel article span { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; color: var(--green); background: var(--green-light); font-size: 11px; font-weight: 600; }
+.recommendation-panel article p { margin: 0; color: #50544e; font-size: 13px; line-height: 1.65; }
 
 @media (max-width: 900px) {
   .login-shell { grid-template-columns: 1fr; }
@@ -218,7 +252,9 @@ h1, h2, h3 { font-family: var(--serif); }
   .sidebar nav button { width: auto; }
   .sidebar-user { display: none; }
   .workspace { padding: 0 5vw 50px; }
-  .hero-grid, .content-grid, .profile-grid { grid-template-columns: 1fr; }
+  .hero-grid, .content-grid, .profile-grid, .progress-dashboard { grid-template-columns: 1fr; }
+  .graph-heading { align-items: start; flex-direction: column; }
+  .progress-overview { grid-template-columns: repeat(2, 1fr); }
   .tutor-view { height: auto; min-height: 0; }
   .tutor-classroom { height: auto; grid-template-columns: 1fr; }
   .chat-panel { height: 620px; }
@@ -246,4 +282,7 @@ h1, h2, h3 { font-family: var(--serif); }
   .score strong { font-size: 28px; }
   .chat-panel { height: 560px; }
   .messages article { max-width: 90%; }
+  .progress-overview { grid-template-columns: 1fr; }
+  .score-chart { gap: 7px; }
+  .graph-stats { width: 100%; grid-template-columns: repeat(2, 1fr); }
 }
