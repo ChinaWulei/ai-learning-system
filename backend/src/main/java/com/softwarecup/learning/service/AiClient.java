@@ -8,20 +8,33 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 
 @Service
 public class AiClient {
     private final RestClient client;
     private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
+    private final String serviceUrl;
 
     public AiClient(
             RestClient.Builder builder,
             ObjectMapper objectMapper,
             @Value("${ai.service-url}") String serviceUrl
     ) {
-        this.client = builder.baseUrl(serviceUrl).build();
+        this.serviceUrl = serviceUrl.replaceAll("/+$", "");
+        this.client = builder.baseUrl(this.serviceUrl).build();
         this.objectMapper = objectMapper;
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
     }
 
     @SuppressWarnings("unchecked")
@@ -55,33 +68,42 @@ public class AiClient {
     public byte[] synthesizeSpeech(String text) {
         try {
             String requestBody = objectMapper.writeValueAsString(Map.of("text", text));
-            return client.post()
-                    .uri("/ai/v1/tts")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .accept(MediaType.parseMediaType("audio/wav"))
-                    .body(requestBody)
-                    .retrieve()
-                    .body(byte[].class);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(serviceUrl + "/ai/v1/tts"))
+                    .timeout(Duration.ofSeconds(150))
+                    .header("Content-Type", "application/json; charset=utf-8")
+                    .header("Accept", "audio/wav")
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8))
+                    .build();
+            HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                return response.body();
+            }
+            handleSpeechError(response.statusCode(), new String(response.body(), StandardCharsets.UTF_8));
+            throw new IllegalStateException("数字教师语音生成失败");
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("数字教师语音请求序列化失败", exception);
+        } catch (IOException exception) {
+            throw new IllegalStateException("数字教师语音服务连接失败：" + exception.getMessage(), exception);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("数字教师语音请求被中断", exception);
         } catch (RestClientResponseException exception) {
-            String responseBody = exception.getResponseBodyAsString();
-            if (exception.getStatusCode().value() == 400
-                    && responseBody.contains("Invalid HTTP request received")) {
-                throw new IllegalStateException(
-                        "AI 服务协议错误：请确认后端环境变量 AI_SERVICE_URL 使用 http://ai-service:8000，"
-                                + "不要使用 https、公网域名或浏览器访问地址",
-                        exception
-                );
-            }
+            handleSpeechError(exception.getStatusCode().value(), exception.getResponseBodyAsString());
+            throw new IllegalStateException("数字教师语音生成失败", exception);
+        }
+    }
+
+    private void handleSpeechError(int statusCode, String responseBody) {
+        if (statusCode == 400 && responseBody.contains("Invalid HTTP request received")) {
             throw new IllegalStateException(
-                    "数字教师语音生成失败（HTTP %d）：%s".formatted(
-                            exception.getStatusCode().value(),
-                            responseBody
-                    ),
-                    exception
+                    "AI 服务协议错误：请确认后端环境变量 AI_SERVICE_URL 使用 http://ai-service:8000，"
+                            + "不要使用 https、公网域名或浏览器访问地址"
             );
         }
+        throw new IllegalStateException(
+                "数字教师语音生成失败（HTTP %d）：%s".formatted(statusCode, responseBody)
+        );
     }
 }
 
