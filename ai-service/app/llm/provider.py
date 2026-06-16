@@ -1,3 +1,4 @@
+import asyncio
 import json
 from abc import ABC, abstractmethod
 from typing import Any
@@ -56,6 +57,8 @@ class OpenAICompatibleProvider(LLMProvider):
 
 
 class GeminiProvider(LLMProvider):
+    RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
+
     def __init__(self, api_key: str, base_url: str, model: str):
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
@@ -76,17 +79,29 @@ class GeminiProvider(LLMProvider):
             }],
             "generationConfig": generation_config,
         }
+        url = f"{self.base_url}/models/{self.model}:generateContent"
+        last_error: httpx.HTTPStatusError | None = None
         async with httpx.AsyncClient(timeout=90) as client:
-            response = await client.post(
-                f"{self.base_url}/models/{self.model}:generateContent",
-                headers={
-                    "x-goog-api-key": self.api_key,
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-            response.raise_for_status()
-            data = response.json()
+            for attempt in range(3):
+                response = await client.post(
+                    url,
+                    headers={
+                        "x-goog-api-key": self.api_key,
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+                try:
+                    response.raise_for_status()
+                    data = response.json()
+                    break
+                except httpx.HTTPStatusError as exception:
+                    last_error = exception
+                    if response.status_code not in self.RETRY_STATUS_CODES or attempt == 2:
+                        raise
+                    await asyncio.sleep(0.8 * (2 ** attempt))
+            else:
+                raise last_error or RuntimeError("Gemini request failed.")
         parts = data["candidates"][0]["content"]["parts"]
         return "".join(part.get("text", "") for part in parts).strip()
 

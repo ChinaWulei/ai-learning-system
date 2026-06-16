@@ -24,6 +24,23 @@ app = FastAPI(title="AI Learning Service", version="0.1.0")
 logger = logging.getLogger("uvicorn.error")
 
 
+async def run_ai_operation(operation, failure_message: str):
+    try:
+        return await operation()
+    except httpx.HTTPStatusError as exception:
+        logger.error(
+            "LLM request failed: status=%s body=%s",
+            exception.response.status_code,
+            exception.response.text,
+        )
+        if exception.response.status_code in {429, 500, 502, 503, 504}:
+            raise HTTPException(status_code=503, detail=failure_message) from exception
+        raise HTTPException(status_code=502, detail=failure_message) from exception
+    except httpx.HTTPError as exception:
+        logger.error("LLM request failed: %s", exception)
+        raise HTTPException(status_code=503, detail=failure_message) from exception
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_error(request: Request, exception: RequestValidationError):
     errors = exception.errors()
@@ -58,12 +75,15 @@ async def health(container: Annotated[Container, Depends(get_container)]):
 async def generate_plan(
     request: PlanRequest, container: Annotated[Container, Depends(get_container)]
 ):
-    result = await container.learning_graph.generate_plan(
-        {
-            **request.model_dump(exclude_none=True),
-            "user_profile": request.user_profile.model_dump() if request.user_profile else None,
-            "trace": [],
-        }
+    result = await run_ai_operation(
+        lambda: container.learning_graph.generate_plan(
+            {
+                **request.model_dump(exclude_none=True),
+                "user_profile": request.user_profile.model_dump() if request.user_profile else None,
+                "trace": [],
+            }
+        ),
+        "AI model service is temporarily unavailable. Please try again later.",
     )
     return ApiResponse(
         request_id=request.request_id,
@@ -81,13 +101,16 @@ async def generate_plan(
 async def evaluate(
     request: EvaluationRequest, container: Annotated[Container, Depends(get_container)]
 ):
-    result = await container.learning_graph.evaluate(
-        {
-            **request.model_dump(exclude_none=True),
-            "answers": [item.model_dump() for item in request.answers],
-            "user_profile": request.user_profile.model_dump() if request.user_profile else None,
-            "trace": [],
-        }
+    result = await run_ai_operation(
+        lambda: container.learning_graph.evaluate(
+            {
+                **request.model_dump(exclude_none=True),
+                "answers": [item.model_dump() for item in request.answers],
+                "user_profile": request.user_profile.model_dump() if request.user_profile else None,
+                "trace": [],
+            }
+        ),
+        "AI model service is temporarily unavailable. Please try again later.",
     )
     return ApiResponse(
         request_id=request.request_id,
@@ -105,12 +128,15 @@ async def evaluate(
 async def tutor(
     request: TutorRequest, container: Annotated[Container, Depends(get_container)]
 ):
-    result = await container.tutor_graph.chat(
-        {
-            **request.model_dump(exclude_none=True),
-            "user_profile": request.user_profile.model_dump() if request.user_profile else None,
-            "trace": [],
-        }
+    result = await run_ai_operation(
+        lambda: container.tutor_graph.chat(
+            {
+                **request.model_dump(exclude_none=True),
+                "user_profile": request.user_profile.model_dump() if request.user_profile else None,
+                "trace": [],
+            }
+        ),
+        "AI model service is temporarily unavailable. Please try again later.",
     )
     return ApiResponse(
         request_id=request.request_id,
