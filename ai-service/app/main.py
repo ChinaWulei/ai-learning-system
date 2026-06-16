@@ -28,8 +28,11 @@ logger = logging.getLogger("uvicorn.error")
 async def validation_error(request: Request, exception: RequestValidationError):
     errors = exception.errors()
     logger.warning(
-        "Request validation failed: path=%s errors=%s",
+        "Request validation failed: method=%s path=%s client=%s content_length=%s errors=%s",
+        request.method,
         request.url.path,
+        request.client.host if request.client else "unknown",
+        request.headers.get("content-length"),
         errors,
     )
     return JSONResponse(
