@@ -15,18 +15,19 @@ class GeminiTtsService:
 
     async def synthesize(self, text: str, language: str = "zh-CN") -> bytes:
         if not self.api_key:
-            raise RuntimeError("Gemini TTS 未配置，请设置 GEMINI_API_KEY")
+            raise RuntimeError("Gemini TTS is not configured. Please set GEMINI_API_KEY.")
 
         instruction = self._language_instruction(language)
+        prompt = (
+            f"{instruction}\n"
+            "Keep the original meaning and all key knowledge points. "
+            "Do not add extra explanations. "
+            "Read the final result directly as a teacher speaking to a student.\n"
+            f"{text}"
+        )
         payload = {
             "contents": [{
-                "parts": [{
-                    "text": (
-                        f"{instruction}"
-                        "保持原意，不添加或省略内容，知识点处适当停顿：\n"
-                        f"{text}"
-                    )
-                }]
+                "parts": [{"text": prompt}]
             }],
             "generationConfig": {
                 "responseModalities": ["AUDIO"],
@@ -56,16 +57,29 @@ class GeminiTtsService:
             inline_data = data["candidates"][0]["content"]["parts"][0]["inlineData"]
             pcm = base64.b64decode(inline_data["data"])
         except (KeyError, IndexError, TypeError, ValueError) as exception:
-            raise RuntimeError("Gemini 未返回有效音频") from exception
+            raise RuntimeError("Gemini did not return valid audio data.") from exception
         return self._pcm_to_wav(pcm)
 
     @staticmethod
     def _language_instruction(language: str) -> str:
         instructions = {
-            "zh-CN": "请使用自然、温暖、耐心的普通话教师语气朗读以下内容。",
-            "en-US": "Read the following content in clear, warm, patient American English teacher style. ",
-            "ja-JP": "以下の内容を、自然で温かく、わかりやすい日本語の先生の口調で読み上げてください。",
-            "yue-HK": "請用自然、親切、有耐性嘅粵語老師語氣朗讀以下內容。",
+            "zh-CN": (
+                "If the content is not already Mandarin Chinese, translate it into "
+                "natural Mandarin Chinese first. Then read it in a warm, patient "
+                "Mandarin Chinese teacher voice."
+            ),
+            "en-US": (
+                "Translate the content into natural American English first. "
+                "Then read it in a clear, warm, patient American English teacher voice."
+            ),
+            "ja-JP": (
+                "Translate the content into natural Japanese first. "
+                "Then read it in a clear, warm, patient Japanese teacher voice."
+            ),
+            "yue-HK": (
+                "Translate the content into natural Cantonese used in Hong Kong first. "
+                "Then read it in a warm, patient Cantonese teacher voice."
+            ),
         }
         return instructions.get(language, instructions["zh-CN"])
 
