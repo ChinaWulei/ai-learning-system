@@ -14,6 +14,8 @@ const busy = ref(false);
 const error = ref("");
 const task = ref(null);
 const profile = ref(null);
+const progressSummary = ref(null);
+const knowledgeGraph = ref(null);
 const evaluation = ref(null);
 const answers = ref({});
 const topic = ref("");
@@ -35,11 +37,37 @@ let cameraStream = null;
 const navItems = [
   { id: "learn", label: "学习中心", icon: "◫" },
   { id: "tutor", label: "AI 助教", icon: "✦" },
+  { id: "graph", label: "知识图谱", icon: "◇" },
   { id: "profile", label: "学习画像", icon: "◎" },
 ];
 
 const stages = computed(() => task.value?.learning_plan?.stages || []);
 const masteryEntries = computed(() => Object.entries(profile.value?.mastery || {}));
+const progressOverview = computed(() => progressSummary.value?.overview || {});
+const scoreTrend = computed(() => progressSummary.value?.score_trend || []);
+const statusDistribution = computed(() => progressSummary.value?.status_distribution || []);
+const masteryRanking = computed(() => progressSummary.value?.mastery_ranking || masteryEntries.value.map(([name, value]) => ({ name, value })));
+const progressRecommendations = computed(() => progressSummary.value?.recommendations || []);
+const maxStatusTotal = computed(() => Math.max(...statusDistribution.value.map((item) => item.total || 0), 1));
+const graphNodes = computed(() => {
+  const nodes = knowledgeGraph.value?.nodes || [];
+  const radiusByType = { task: 24, knowledge: 20, quiz: 15 };
+  return nodes.map((node, index) => {
+    const angle = (index / Math.max(nodes.length, 1)) * Math.PI * 2 - Math.PI / 2;
+    const layer = node.type === "task" ? 86 : node.type === "knowledge" ? 170 : 246;
+    return {
+      ...node,
+      x: 360 + Math.cos(angle) * layer,
+      y: 260 + Math.sin(angle) * layer,
+      r: radiusByType[node.type] || 18,
+    };
+  });
+});
+const graphEdges = computed(() => (knowledgeGraph.value?.edges || []).map((edge) => ({
+  ...edge,
+  sourceNode: graphNodes.value.find((node) => node.id === edge.source),
+  targetNode: graphNodes.value.find((node) => node.id === edge.target),
+})).filter((edge) => edge.sourceNode && edge.targetNode));
 const latestTutorAnswer = computed(() => (
   [...messages.value].reverse().find((message) => message.role === "assistant")?.content || ""
 ));
@@ -55,6 +83,25 @@ function questionType(type) {
     true_false: "判断题",
     short_answer: "简答题",
   }[type] || "练习题";
+}
+
+function percent(value) {
+  return Math.round(Number(value || 0) * 100);
+}
+
+function numberText(value, digits = 0) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? number.toFixed(digits) : "0";
+}
+
+function statusLabel(status) {
+  return {
+    CREATED: "已创建",
+    LEARNING: "学习中",
+    EVALUATED: "已测评",
+    REMEDIATION: "待巩固",
+    COMPLETED: "已完成",
+  }[status] || status || "未知";
 }
 
 async function login() {
@@ -132,12 +179,16 @@ function logout() {
   session.value = getSession();
   task.value = null;
   profile.value = null;
+  progressSummary.value = null;
+  knowledgeGraph.value = null;
 }
 
 async function loadProfile() {
   if (!session.value.token) return;
   try {
     profile.value = await api.profile();
+    progressSummary.value = await api.progress();
+    knowledgeGraph.value = await api.knowledgeGraph();
   } catch (err) {
     error.value = err.message;
   }
@@ -151,6 +202,7 @@ async function createTask() {
   try {
     task.value = await api.createTask(topic.value.trim(), goal.value.trim());
     answers.value = {};
+    knowledgeGraph.value = await api.knowledgeGraph();
   } catch (err) {
     error.value = err.message;
   } finally {
@@ -471,6 +523,46 @@ onBeforeUnmount(() => {
         </section>
       </div>
 
+      <div v-else-if="activeView === 'graph'" class="view graph-view">
+        <section class="graph-heading">
+          <div>
+            <p class="eyebrow">KNOWLEDGE GRAPH</p>
+            <h1>知识图谱</h1>
+            <p>基于学习任务、知识点阶段和测评题目自动沉淀关系网络。</p>
+          </div>
+          <div class="graph-stats">
+            <article><strong>{{ graphNodes.length }}</strong><span>节点</span></article>
+            <article><strong>{{ graphEdges.length }}</strong><span>关系</span></article>
+          </div>
+        </section>
+
+        <section class="panel graph-panel">
+          <div v-if="knowledgeGraph?.error" class="graph-warning">
+            Neo4j 查询失败：{{ knowledgeGraph.error }}
+          </div>
+          <div v-else-if="knowledgeGraph && !knowledgeGraph.enabled" class="graph-warning">
+            Neo4j 未启用。服务器需要配置 NEO4J_ENABLED=true。
+          </div>
+          <div v-if="graphNodes.length" class="graph-canvas">
+            <svg viewBox="0 0 720 520" role="img" aria-label="知识图谱">
+              <line
+                v-for="(edge, index) in graphEdges"
+                :key="`${edge.source}-${edge.target}-${index}`"
+                :x1="edge.sourceNode.x"
+                :y1="edge.sourceNode.y"
+                :x2="edge.targetNode.x"
+                :y2="edge.targetNode.y"
+              />
+              <g v-for="node in graphNodes" :key="node.id" :class="['graph-node', node.type]">
+                <circle :cx="node.x" :cy="node.y" :r="node.r" />
+                <text :x="node.x" :y="node.y + node.r + 18">{{ node.label }}</text>
+              </g>
+            </svg>
+          </div>
+          <p v-else class="empty">生成学习任务后，系统会把任务、知识点和题目写入 Neo4j 图谱。</p>
+        </section>
+      </div>
+
       <div v-else class="view profile-view">
         <section class="profile-hero">
           <div class="profile-avatar">{{ session.user?.nickname?.slice(0, 1) }}</div>
@@ -480,14 +572,36 @@ onBeforeUnmount(() => {
             <p>当前学习阶段：{{ profile?.level || "beginner" }}</p>
           </div>
         </section>
+        <section class="progress-overview">
+          <article>
+            <span>任务完成率</span>
+            <strong>{{ percent(progressOverview.completion_rate) }}%</strong>
+            <small>{{ progressOverview.completed_tasks || 0 }} / {{ progressOverview.task_count || 0 }} 个任务</small>
+          </article>
+          <article>
+            <span>平均测评分</span>
+            <strong>{{ numberText(progressOverview.average_score) }}</strong>
+            <small>{{ progressOverview.quiz_attempts || 0 }} 次测评记录</small>
+          </article>
+          <article>
+            <span>累计学习</span>
+            <strong>{{ progressOverview.study_minutes || 0 }}</strong>
+            <small>分钟</small>
+          </article>
+          <article>
+            <span>掌握度均值</span>
+            <strong>{{ percent(progressOverview.mastery_average) }}%</strong>
+            <small>{{ masteryRanking.length }} 个知识点</small>
+          </article>
+        </section>
         <section class="profile-grid">
           <div class="panel mastery-panel">
-            <div class="section-title"><h3>知识掌握度</h3><span>{{ masteryEntries.length }} 项</span></div>
-            <div v-for="[name, value] in masteryEntries" :key="name" class="mastery-row">
-              <div><strong>{{ name }}</strong><span>{{ Math.round(value * 100) }}%</span></div>
-              <div class="progress"><i :style="{ width: `${value * 100}%` }"></i></div>
+            <div class="section-title"><h3>知识掌握度</h3><span>{{ masteryRanking.length }} 项</span></div>
+            <div v-for="item in masteryRanking" :key="item.name" class="mastery-row">
+              <div><strong>{{ item.name }}</strong><span>{{ percent(item.value) }}%</span></div>
+              <div class="progress"><i :style="{ width: `${percent(item.value)}%` }"></i></div>
             </div>
-            <p v-if="!masteryEntries.length" class="empty">完成测验后将生成掌握度数据</p>
+            <p v-if="!masteryRanking.length" class="empty">完成测验后将生成掌握度数据</p>
           </div>
           <div class="panel">
             <div class="section-title"><h3>待加强知识点</h3></div>

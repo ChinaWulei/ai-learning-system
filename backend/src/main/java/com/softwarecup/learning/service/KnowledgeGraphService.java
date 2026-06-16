@@ -117,7 +117,7 @@ public class KnowledgeGraphService {
                     nodes.putIfAbsent(taskId, node(taskId, task.get("topic").asString("学习任务"), "task"));
                     if (!row.get("k").isNull()) {
                         var knowledge = row.get("k").asNode();
-                        String knowledgeId = "knowledge-" + knowledge.id();
+                        String knowledgeId = "knowledge-" + knowledge.elementId();
                         nodes.putIfAbsent(knowledgeId, node(knowledgeId, knowledge.get("name").asString(), "knowledge"));
                         edges.add(edge(taskId, knowledgeId, "包含"));
                         row.get("quizzes").asList(value -> value.asNode()).forEach(quiz -> {
