@@ -28,6 +28,13 @@ const messages = ref([
     content: "你好，我是你的 AI 学习助教。可以问我知识点，也可以让我生成练习或学习计划。",
   },
 ]);
+const quickQuestions = [
+  "把当前知识点用简单例子讲一遍",
+  "根据当前主题出 3 道练习题",
+  "总结一下我现在应该重点学什么",
+  "用考试答题思路讲解这个知识点",
+  "给我制定今天 30 分钟的学习安排",
+];
 const loginForm = ref({ username: "demo", password: "demo123" });
 const loginMode = ref("password");
 const faceActive = ref(false);
@@ -217,6 +224,31 @@ async function loadTask(taskId) {
   }
 }
 
+async function openTask(taskId, focusQuiz = false) {
+  await loadTask(taskId);
+  activeView.value = "learn";
+  if (focusQuiz) {
+    await nextTick();
+    document.querySelector(".quiz-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+async function openGraphNode(node) {
+  if (node.type === "task") {
+    await openTask(Number(String(node.id).replace("task-", "")));
+    return;
+  }
+  if (node.type === "quiz") {
+    await openTask(node.taskId, true);
+    return;
+  }
+  if (node.type === "knowledge") {
+    activeView.value = "tutor";
+    tutorMessage.value = `请讲解知识点：${node.label}`;
+    await askTutor();
+  }
+}
+
 async function createTask() {
   if (!topic.value.trim()) return;
   error.value = "";
@@ -275,6 +307,11 @@ async function askTutor() {
   } finally {
     busy.value = false;
   }
+}
+
+async function askQuickQuestion(question) {
+  tutorMessage.value = question;
+  await askTutor();
 }
 
 function handleSessionExpired() {
@@ -560,6 +597,15 @@ onBeforeUnmount(() => {
               </article>
               <article v-if="busy" class="assistant typing"><span>师</span><p>正在整理讲解内容...</p></article>
             </div>
+            <div class="quick-questions">
+              <button
+                v-for="question in quickQuestions"
+                :key="question"
+                type="button"
+                :disabled="busy"
+                @click="askQuickQuestion(question)"
+              >{{ question }}</button>
+            </div>
             <form class="chat-input" @submit.prevent="askTutor">
               <input v-model="tutorMessage" placeholder="向林老师提问..." />
               <button :disabled="busy || !tutorMessage.trim()">发送 ↑</button>
@@ -598,7 +644,15 @@ onBeforeUnmount(() => {
                 :x2="edge.targetNode.x"
                 :y2="edge.targetNode.y"
               />
-              <g v-for="node in graphNodes" :key="node.id" :class="['graph-node', node.type]">
+              <g
+                v-for="node in graphNodes"
+                :key="node.id"
+                :class="['graph-node', node.type]"
+                tabindex="0"
+                role="button"
+                @click="openGraphNode(node)"
+                @keydown.enter.prevent="openGraphNode(node)"
+              >
                 <circle :cx="node.x" :cy="node.y" :r="node.r" />
                 <text :x="node.x" :y="node.y + node.r + 18">{{ node.label }}</text>
               </g>

@@ -78,9 +78,10 @@ public class KnowledgeGraphService {
                     tx.run("""
                             MERGE (k:KnowledgePoint {name: $point})
                             MERGE (q:Quiz {id: $quizId})
-                            SET q.question = $question, q.type = $type, q.difficulty = $difficulty
+                            SET q.question = $question, q.type = $type, q.difficulty = $difficulty, q.taskId = $taskId
                             MERGE (k)-[:CHECKED_BY]->(q)
                             """, Values.parameters(
+                            "taskId", taskId,
                             "point", point,
                             "quizId", quizId,
                             "question", text(quiz.get("question")),
@@ -122,7 +123,13 @@ public class KnowledgeGraphService {
                         edges.add(edge(taskId, knowledgeId, "包含"));
                         row.get("quizzes").asList(value -> value.asNode()).forEach(quiz -> {
                             String quizId = "quiz-" + quiz.get("id").asString();
-                            nodes.putIfAbsent(quizId, node(quizId, quiz.get("question").asString("练习题"), "quiz"));
+                            Map<String, Object> quizNode = new LinkedHashMap<>(node(
+                                    quizId,
+                                    quiz.get("question").asString("练习题"),
+                                    "quiz"
+                            ));
+                            quizNode.put("taskId", quiz.get("taskId").asLong(task.get("id").asLong()));
+                            nodes.putIfAbsent(quizId, quizNode);
                             edges.add(edge(knowledgeId, quizId, "检测"));
                         });
                     }
